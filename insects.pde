@@ -1,7 +1,29 @@
 // Types
 
-class Attractor {
+public interface Location {
+  float x();
+  float y();
+}
+
+public interface Actor extends Location {
+  void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers);
+  void draw();
+  void relocate();
+}
+
+class Positional implements Location {
   float posX, posY;
+
+  float x() {
+    return posX;
+  }
+
+  float y() {
+    return posY;
+  }
+}
+
+class Attractor extends Positional implements Actor {
 
   Attractor() {
     relocate();
@@ -12,7 +34,7 @@ class Attractor {
     posY = random(0, height);
   }
 
-  void update() {
+  void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers) {
     if(random(0, 1) < 0.01) {
       relocate();
     }
@@ -20,7 +42,7 @@ class Attractor {
 
   void draw() {
     pushMatrix();
-    translate(posX, posY);
+    translate(x(), y());
     float w = 10;
     fill(color(200, 100, 100));
     rect(-w, -w, 2*w, 2*w);
@@ -55,8 +77,9 @@ float angleFromDirection(float vx, float vy) {
   return ret;
 }
 
-class Mover {
-  float posX, posY;
+//Positional closest(ArrayList<Positional> attractors, )
+
+class Mover extends Positional implements Actor {
   float rot;
   float velocity;
   PImage graphic;
@@ -65,22 +88,51 @@ class Mover {
     posX = x;
     posY = y;
     graphic = g;
-    velocity = random(50, 100); // pixels per second
+    velocity = random(200, 400); // pixels per second
   }
 
-  void update(float dt, ArrayList<Attractor> attractors) {
-    Attractor closest = null;
+  void relocate() {
+    if(random(-1,1) < 0) {
+      float r = random(-1, 1) < 0 ? -1. : 1.;
+      if (r < 0) {
+        // left
+        posX = r * random(10, 30);
+      } else {
+        // right
+        posX = r * random(width+10, width+30);
+      }
+      posY = random(0, height);
+    } else {
+      float r = random(-1, 1) < 0 ? -1. : 1.;
+      if (r < 0) {
+        // top
+        posY = r * random(10, 30);
+      } else {
+        // bottom
+        posY = r * random(height+10, height+30);
+      }
+      posX = random(0, width);
+    }
+  }
+
+  void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers) {
+
+    // find our goal
+    Actor closest = null;
     float clostestDistSq = 0;
     for( int i=0; i < attractors.size(); i++) {
-      Attractor cur = attractors.get(i);
-      float dx = cur.posX - posX;
-      float dy = cur.posY - posY;
+      Actor cur = attractors.get(i);
+      float dx = cur.x() - x();
+      float dy = cur.y() - y();
       float distSq = dx*dx+dy*dy;
       if(closest == null ||  distSq < clostestDistSq) {
         closest = cur;
         clostestDistSq = distSq;
       }
     }
+
+    // avoid other movers
+
     
     if(closest == null) {
       return;
@@ -93,10 +145,10 @@ class Mover {
     }
 
     // turn to face where we're going
-    float dx = closest.posX - posX;
-    float dy = closest.posY - posY;
+    float dx = closest.x() - x();
+    float dy = closest.y() - y();
     float desiredRot = angleFromDirection(dx, dy);
-    rot = lerp(rot, desiredRot, 0.2);
+    rot = lerp(rot, desiredRot, 0.1);
 
     // move in the direction we're facing
     float hx = cos(rot);
@@ -109,7 +161,7 @@ class Mover {
 
   void draw() {
     pushMatrix();
-    translate(posX, posY);
+    translate(x(), y());
     rotate(rot + PI);
     fill(color(100, 200, 100));
     float w = 30;
@@ -124,8 +176,8 @@ class Mover {
 //
 int gLastTime = 0;
 
-ArrayList<Attractor> gAttractors;
-ArrayList<Mover> gMovers;
+ArrayList<Actor> gAttractors;
+ArrayList<Actor> gMovers;
 PImage gScorpionImage;
 
 void setup() {
@@ -137,13 +189,13 @@ void setup() {
     return;
   }
 
-  gMovers = new ArrayList<Mover>();
-  for(int i=0; i < 10; i++) {
+  gMovers = new ArrayList<Actor>();
+  for(int i=0; i < 50; i++) {
     gMovers.add(new Mover(random(0, width), random(0, height), gScorpionImage));
   }
 
-  gAttractors = new ArrayList<Attractor>();
-  for(int i=0; i < 5; i++ ) {
+  gAttractors = new ArrayList<Actor>();
+  for(int i=0; i < 4; i++ ) {
     gAttractors.add(new Attractor());
   }
   
@@ -157,17 +209,30 @@ void draw() {
   float dt = float(now - gLastTime) / 1000;
   gLastTime = now;
 
-  // DEBUG - force attractor to mouse position
+  // update attractors (TODO: use neural net to place them)
   for (int i = 0; i < gAttractors.size(); i++) {
-    Attractor a = gAttractors.get(i);
-    a.update();
+    Actor a = gAttractors.get(i);
+    a.update(dt, gAttractors, gMovers);
     a.draw();
   }
 
+  // update movers
   for (int i = 0; i < gMovers.size(); i++) {
-    Mover m = gMovers.get(i);
-    m.update(dt, gAttractors);
+    Actor m = gMovers.get(i);
+    m.update(dt, gAttractors, gMovers);
     m.draw();
+  }
+
+  // respawn out of bounds movers
+  float threshold = 50;
+  for (int i = 0; i < gMovers.size(); i++) {
+    Actor m = gMovers.get(i);
+    if( m.x() < -threshold ||
+        m.x() > float(width)+threshold ||
+        m.y() < -threshold ||
+        m.y() > float(height)+threshold) {
+          m.relocate();
+        }
   }
 
 }
