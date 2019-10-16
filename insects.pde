@@ -10,7 +10,6 @@ class Attractor {
   void relocate() {
     posX = random(0, width);
     posY = random(0, height);
-    print("NOW AT " + posX + ", " + posY + "\n");
   }
 
   void update() {
@@ -59,12 +58,14 @@ float angleFromDirection(float vx, float vy) {
 class Mover {
   float posX, posY;
   float rot;
-  float speed;
+  float velocity;
+  PImage graphic;
 
-  Mover(float x, float y) {
+  Mover(float x, float y, PImage g) {
     posX = x;
     posY = y;
-    speed = random(1, 10); // pixels per second
+    graphic = g;
+    velocity = random(50, 100); // pixels per second
   }
 
   void update(float dt, ArrayList<Attractor> attractors) {
@@ -85,11 +86,23 @@ class Mover {
       return;
     }
 
+    float arrivalThreshold = 5;
+    if (clostestDistSq < arrivalThreshold) {
+      // we're already here
+      return;
+    }
+
+    // turn to face where we're going
     float dx = closest.posX - posX;
     float dy = closest.posY - posY;
-    rot = angleFromDirection(dx, dy);
-    float moveX = dx * dt * speed;
-    float moveY = dy * dt * speed;
+    float desiredRot = angleFromDirection(dx, dy);
+    rot = lerp(rot, desiredRot, 0.2);
+
+    // move in the direction we're facing
+    float hx = cos(rot);
+    float hy = sin(rot);
+    float moveX = hx * dt * velocity;
+    float moveY = hy * dt * velocity;
     posX += moveX;
     posY += moveY;
   }
@@ -97,11 +110,11 @@ class Mover {
   void draw() {
     pushMatrix();
     translate(posX, posY);
-    rotate(rot);
+    rotate(rot + PI);
     fill(color(100, 200, 100));
-    float w = 10;
-    float h = 5;
-    rect(-w, -h, 2*w, 2*h);
+    float w = 30;
+    float h = 30;
+    image(graphic, -w, -h, 2*w, 2*h);
     popMatrix();
   }
 }
@@ -113,14 +126,20 @@ int gLastTime = 0;
 
 ArrayList<Attractor> gAttractors;
 ArrayList<Mover> gMovers;
+PImage gScorpionImage;
 
 void setup() {
   size(800, 800);
   frameRate(30);
 
+  gScorpionImage = loadImage("scorpion.gif");
+  if(gScorpionImage == null) {
+    return;
+  }
+
   gMovers = new ArrayList<Mover>();
   for(int i=0; i < 10; i++) {
-    gMovers.add(new Mover(random(0, width), random(0, height)));
+    gMovers.add(new Mover(random(0, width), random(0, height), gScorpionImage));
   }
 
   gAttractors = new ArrayList<Attractor>();
