@@ -1,24 +1,40 @@
+import processing.core.*; 
+import processing.data.*; 
+import processing.event.*; 
+import processing.opengl.*; 
+
+import java.util.HashMap; 
+import java.util.ArrayList; 
+import java.io.File; 
+import java.io.BufferedReader; 
+import java.io.PrintWriter; 
+import java.io.InputStream; 
+import java.io.OutputStream; 
+import java.io.IOException; 
+
+public class insects extends PApplet {
+
 // Types
 
 public interface Location {
-  float x();
-  float y();
+  public float x();
+  public float y();
 }
 
 public interface Actor extends Location {
-  void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers);
-  void draw();
-  void relocate();
+  public void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers);
+  public void draw();
+  public void relocate();
 }
 
 class Positional implements Location {
   float posX, posY;
 
-  float x() {
+  public float x() {
     return posX;
   }
 
-  float y() {
+  public float y() {
     return posY;
   }
 }
@@ -29,18 +45,18 @@ class Attractor extends Positional implements Actor {
     relocate();
   }
 
-  void relocate() {
+  public void relocate() {
     posX = random(0, width);
     posY = random(0, height);
   }
 
-  void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers) {
-    if(random(0, 1) < 0.01) {
+  public void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers) {
+    if(random(0, 1) < 0.01f) {
       relocate();
     }
   }
 
-  void draw() {
+  public void draw() {
     pushMatrix();
     translate(x(), y());
     float w = 10;
@@ -50,18 +66,18 @@ class Attractor extends Positional implements Actor {
   }
 }
 
-float angleFromDirection(float vx, float vy) {
+public float angleFromDirection(float vx, float vy) {
   float len = sqrt(vx*vx + vy*vy);
-  if (len < 0.01) {
-    return 0.;
+  if (len < 0.01f) {
+    return 0.f;
   }
   float x = vx / len;
   float y = vy / len;
 
-  if (x == 0.) {
-      return (y > 0.)? PI*0.5
-          : (y == 0.)? 0
-          : PI*1.5;
+  if (x == 0.f) {
+      return (y > 0.f)? PI*0.5f
+          : (y == 0.f)? 0
+          : PI*1.5f;
   }
   else if (y == 0) {
       return (x >= 0)? 0 : PI;
@@ -73,7 +89,7 @@ float angleFromDirection(float vx, float vy) {
   else if (x < 0) // quadrant Ⅱ
       ret = PI + ret; // it actually substracts
   else if (y < 0) // quadrant Ⅳ
-      ret = PI*1.5 + (PI*0.5 + ret); // it actually substracts
+      ret = PI*1.5f + (PI*0.5f + ret); // it actually substracts
   return ret;
 }
 
@@ -91,9 +107,9 @@ class Mover extends Positional implements Actor {
     velocity = random(200, 400); // pixels per second
   }
 
-  void relocate() {
+  public void relocate() {
     if(random(-1,1) < 0) {
-      float r = random(-1, 1) < 0 ? -1. : 1.;
+      float r = random(-1, 1) < 0 ? -1.f : 1.f;
       if (r < 0) {
         // left
         posX = r * random(10, 30);
@@ -103,7 +119,7 @@ class Mover extends Positional implements Actor {
       }
       posY = random(0, height);
     } else {
-      float r = random(-1, 1) < 0 ? -1. : 1.;
+      float r = random(-1, 1) < 0 ? -1.f : 1.f;
       if (r < 0) {
         // top
         posY = r * random(10, 30);
@@ -115,7 +131,7 @@ class Mover extends Positional implements Actor {
     }
   }
 
-  void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers) {
+  public void update(float dt, ArrayList<Actor> attractors, ArrayList<Actor> repellers) {
 
     // find our goal
     Actor closest = null;
@@ -148,7 +164,7 @@ class Mover extends Positional implements Actor {
     float dx = closest.x() - x();
     float dy = closest.y() - y();
     float desiredRot = angleFromDirection(dx, dy);
-    rot = lerp(rot, desiredRot, 0.1);
+    rot = lerp(rot, desiredRot, 0.1f);
 
     // move in the direction we're facing
     float hx = cos(rot);
@@ -159,7 +175,7 @@ class Mover extends Positional implements Actor {
     posY += moveY;
   }
 
-  void draw() {
+  public void draw() {
     pushMatrix();
     translate(x(), y());
     rotate(rot + PI);
@@ -178,20 +194,23 @@ int gLastTime = 0;
 
 ArrayList<Actor> gAttractors;
 ArrayList<Actor> gMovers;
-PImage gScorpionImage;
+ArrayList<PImage> gImages;
 
-void setup() {
-  size(800, 800);
+public void setup() {
+  
   frameRate(30);
 
-  gScorpionImage = loadImage("scorpion.gif");
-  if(gScorpionImage == null) {
-    return;
-  }
+  gImages = new ArrayList<PImage>();
+  gImages.add(loadImage("scorpion.gif"));
+  gImages.add(loadImage("bat1.png"));
+  gImages.add(loadImage("ghost1.png"));
+  gImages.add(loadImage("ghost2.png"));
 
   gMovers = new ArrayList<Actor>();
   for(int i=0; i < 50; i++) {
-    gMovers.add(new Mover(random(0, width), random(0, height), gScorpionImage));
+    int idx = PApplet.parseInt(random(0, gImages.size()));
+    PImage img = gImages.get(idx);
+    gMovers.add(new Mover(random(0, width), random(0, height), img));
   }
 
   gAttractors = new ArrayList<Actor>();
@@ -201,12 +220,12 @@ void setup() {
   
 }
 
-void draw() {
+public void draw() {
   background(204);
 
   // get a dt
   int now = millis();
-  float dt = float(now - gLastTime) / 1000;
+  float dt = PApplet.parseFloat(now - gLastTime) / 1000;
   gLastTime = now;
 
   // update attractors (TODO: use neural net to place them)
@@ -228,11 +247,21 @@ void draw() {
   for (int i = 0; i < gMovers.size(); i++) {
     Actor m = gMovers.get(i);
     if( m.x() < -threshold ||
-        m.x() > float(width)+threshold ||
+        m.x() > PApplet.parseFloat(width)+threshold ||
         m.y() < -threshold ||
-        m.y() > float(height)+threshold) {
+        m.y() > PApplet.parseFloat(height)+threshold) {
           m.relocate();
         }
   }
 
+}
+  public void settings() {  size(800, 800); }
+  static public void main(String[] passedArgs) {
+    String[] appletArgs = new String[] { "insects" };
+    if (passedArgs != null) {
+      PApplet.main(concat(appletArgs, passedArgs));
+    } else {
+      PApplet.main(appletArgs);
+    }
+  }
 }
