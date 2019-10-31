@@ -84,13 +84,16 @@ class Mover extends Positional implements Actor {
   float velocity;
   PImage graphic;
   float scale;
+  boolean turns;
 
-  Mover(float x, float y, PImage g) {
+
+  Mover(float x, float y, PImage g, float s, float speed, boolean canTurn) {
     posX = x;
     posY = y;
     graphic = g;
-    scale = 0.5;
-    velocity = random(200, 400); // pixels per second
+    scale = s * random(0.8, 1.2);
+    velocity = speed * random(0.8, 1.2);
+    turns = canTurn;
   }
 
   void relocate() {
@@ -147,10 +150,12 @@ class Mover extends Positional implements Actor {
     }
 
     // turn to face where we're going
-    float dx = closest.x() - x();
-    float dy = closest.y() - y();
-    float desiredRot = angleFromDirection(dx, dy);
-    rot = lerp(rot, desiredRot, 0.1);
+    if(turns) {
+      float dx = closest.x() - x();
+      float dy = closest.y() - y();
+      float desiredRot = angleFromDirection(dx, dy);
+      rot = lerp(rot, desiredRot, 0.1);
+    }
 
     // move in the direction we're facing
     float hx = cos(rot);
@@ -169,6 +174,7 @@ class Mover extends Positional implements Actor {
     float w = graphic.width * scale;
     float h = graphic.height * scale;
     image(graphic, -w*0.5, -h*0.5, w, h);
+    //circle(0, 0, w*0.5);
     popMatrix();
   }
 }
@@ -180,24 +186,45 @@ int gLastTime = 0;
 
 ArrayList<Actor> gAttractors;
 ArrayList<Actor> gMovers;
-ArrayList<PImage> gImages;
+
+class SpawnConfig {
+  PImage image;
+  float scale;
+  int count;
+  float speed;
+  boolean canTurn;
+
+  SpawnConfig(String filename, float scale_, int count_, float speed_, boolean canTurn_) {
+    image = loadImage(filename);
+    scale = scale_;
+    count = count_;
+    speed = speed_;
+    canTurn = canTurn_;
+  }
+}
+
+ArrayList<Actor> spawn(ArrayList<SpawnConfig> configs) {
+  ArrayList<Actor> result = new ArrayList<Actor>();
+  for(int i=0; i < configs.size(); i++) {
+    SpawnConfig config = configs.get(i);
+    for(int c=0; c < config.count; c++) {
+      result.add(new Mover(random(0, width), random(0, height), config.image, config.scale, config.speed, config.canTurn));
+    }
+  }
+  return result;
+}
 
 void setup() {
   size(1920, 1080, P2D);
   frameRate(30);
 
-  gImages = new ArrayList<PImage>();
-  gImages.add(loadImage("ant.png"));
-  //gImages.add(loadImage("bat1.png"));
-  //gImages.add(loadImage("ghost1.png"));
-  //gImages.add(loadImage("ghost2.png"));
-
-  gMovers = new ArrayList<Actor>();
-  for(int i=0; i < 50; i++) {
-    int idx = int(random(0, gImages.size()));
-    PImage img = gImages.get(idx);
-    gMovers.add(new Mover(random(0, width), random(0, height), img));
-  }
+  // configuration
+  ArrayList<SpawnConfig> configs = new ArrayList<SpawnConfig>();
+  configs.add(new SpawnConfig("ant.png", 0.4, 40, 10, true));
+  configs.add(new SpawnConfig("bee.png", 0.6, 15, 200, true));
+  configs.add(new SpawnConfig("ghost.png", 2.0, 1, 100, false));
+  configs.add(new SpawnConfig("scorpion.png", 1.0, 2, 50, true));
+  gMovers = spawn(configs);
 
   gAttractors = new ArrayList<Actor>();
   for(int i=0; i < 4; i++ ) {
@@ -207,7 +234,7 @@ void setup() {
 }
 
 void draw() {
-  background(204);
+  background(128);
 
   // get a dt
   int now = millis();
