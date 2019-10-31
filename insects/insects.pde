@@ -83,11 +83,13 @@ class Mover extends Positional implements Actor {
   float rot;
   float velocity;
   PImage graphic;
+  float scale;
 
   Mover(float x, float y, PImage g) {
     posX = x;
     posY = y;
     graphic = g;
+    scale = 0.5;
     velocity = random(200, 400); // pixels per second
   }
 
@@ -162,11 +164,11 @@ class Mover extends Positional implements Actor {
   void draw() {
     pushMatrix();
     translate(x(), y());
-    rotate(rot + PI);
+    rotate(rot + PI*0.5);
     fill(color(100, 200, 100));
-    float w = 30;
-    float h = 30;
-    image(graphic, -w, -h, 2*w, 2*h);
+    float w = graphic.width * scale;
+    float h = graphic.height * scale;
+    image(graphic, -w*0.5, -h*0.5, w, h);
     popMatrix();
   }
 }
@@ -181,14 +183,14 @@ ArrayList<Actor> gMovers;
 ArrayList<PImage> gImages;
 
 void setup() {
-  size(800, 800);
+  size(1920, 1080, P2D);
   frameRate(30);
 
   gImages = new ArrayList<PImage>();
-  gImages.add(loadImage("scorpion.gif"));
-  gImages.add(loadImage("bat1.png"));
-  gImages.add(loadImage("ghost1.png"));
-  gImages.add(loadImage("ghost2.png"));
+  gImages.add(loadImage("ant.png"));
+  //gImages.add(loadImage("bat1.png"));
+  //gImages.add(loadImage("ghost1.png"));
+  //gImages.add(loadImage("ghost2.png"));
 
   gMovers = new ArrayList<Actor>();
   for(int i=0; i < 50; i++) {
